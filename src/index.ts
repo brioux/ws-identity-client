@@ -1,6 +1,6 @@
 'use strict';
 
-import debug from 'debug';
+const originalDebug = require('debug')('ws-identity');
 import originalTv4 from 'tv4';
 import originalRp from 'request-promise-native';
 
@@ -72,8 +72,8 @@ export class WsIdentityClient {
   private readonly namespace
   private functions;
 
-  constructor(public readonly config:WsIdentityClientOpts){
-    this.debug = config.debug || debug('ws-identity');
+  constructor(private readonly config:WsIdentityClientOpts){
+    this.debug = config.debug || originalDebug;
     this.tv4 = config.tv4 || originalTv4;
     const rpDefaults = {
       json: true,
@@ -99,8 +99,8 @@ export class WsIdentityClient {
 
   private handleServerResponse(response) {
     if (!response) return Promise.reject(new WsIdentityError('No response passed'));
-    this.debug(response.statusCode);
-    if (response.statusCode !== 200 && response.statusCode !== 204) {
+    originalDebug(response.statusCode);
+    if (![200,201,204].includes(response.statusCode)) {
       // handle health response not as error
       if (response.request.path.match(/sys\/health/) !== null) {
         return Promise.resolve(response.body);
@@ -126,13 +126,13 @@ export class WsIdentityClient {
     uri = uri.replace(/&#x2F;/g, '/');
     options.headers = options.headers || {};
     if (typeof this.config.signature === 'string' && this.config.signature.length) {
-      options.headers['X-Signature'] = options.headers['X-Signature'] || this.config.signature;
+      options.headers['x-signature'] = options.headers['x-signature'] || this.config.signature;
     }
     if (typeof this.config.sessionId === 'string' && this.config.sessionId.length) {
-      options.headers['X-SessionId'] = options.headers['X-SessionId'] || this.config.sessionId;
+      options.headers['x-session-id'] = options.headers['x-session-id'] || this.config.sessionId;
     }
     if (typeof this.namespace === 'string' && this.namespace.length) {
-      options.headers['X-Web-Socket-Namespace'] = this.namespace;
+      options.headers['x-web-socket-namespace'] = this.namespace;
     }
     options.uri = uri;
     this.debug(options.method, uri);
@@ -145,7 +145,7 @@ export class WsIdentityClient {
     const options = Object.assign({}, this.config.requestOptions, requestOptions);
     options.path = `/${path}`;
     options.json = data;
-    options.method = 'PUT';
+    options.method = 'POST';
     return this.request(options);
   };
 
