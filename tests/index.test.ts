@@ -1,8 +1,10 @@
-'use-strict';
+'use-strict'
 import { KEYUTIL, b64nltohex } from "jsrsasign";
 import chai, { assert } from 'chai';
 import asPromised from 'chai-as-promised';
 import chaiHTTP from 'chai-http';
+import Docker, { Container } from "dockerode";
+
 chai.use(chaiHTTP);
 const should = chai.should();
 chai.use(asPromised);
@@ -24,19 +26,19 @@ function startServer(port: string): Promise<http.Server> {
 describe('test', async () => {
     let server,wsServer,wsWallet;
     const port = '8700';
+    const wsServerPath = '/sessions'
     before(async () => {
         // For this test to work first start WsIdentityServer
         // a prebuilt docker image is available at brioux/ws-identity:0.0.4
         // TODO run this container within the test...
         wsWallet = new WsWallet({
-            host: 'ws://localhost:8700/sessions',//wsServer.hostAddress,
+            host: `ws://localhost:${port}${wsServerPath}`,
             keyName: "admin",
             logLevel: "debug"
         })
     });
     after(async () => {
-        //await wsServer.close();
-        //await server.close();
+        
     });
 
     let wsSessionClient;
@@ -54,7 +56,7 @@ describe('test', async () => {
     let sessionId: string;
     let signature;
     let pubKeyHex: string;
-    it('crete new session id for pubKeyHex', async () => {
+    it('create new session id for pubKeyHex', async () => {
         pubKeyHex = wsWallet.getPubKeyHex();
         sessionId = await wsSessionClient.write("new",{pubKeyHex});
         signature = await wsWallet.open(sessionId);
@@ -80,7 +82,7 @@ describe('test', async () => {
     it('get public key ecdsa and verify signature', async () =>  {
         const resp = await wsIdClient.read("get-pub");
         resp.should.be.string
-        const pubKeyEcdsa = new KEYUTIL.getKey(resp);
+        const pubKeyEcdsa = KEYUTIL.getKey(resp);
         const verified = pubKeyEcdsa.verifyHex(
             b64nltohex(digest),
             b64nltohex(signature),
